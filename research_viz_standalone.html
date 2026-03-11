@@ -227,6 +227,50 @@ body {
   border-radius: 4px;
   margin-top: 6px;
 }
+/* Expandable paper list */
+.expand-toggle {
+  color: var(--accent-3);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 4px 0;
+  display: block;
+  transition: color 0.15s;
+  user-select: none;
+}
+.expand-toggle:hover {
+  color: #c4b5fd;
+  text-decoration: underline;
+}
+.expand-toggle::before {
+  content: '▶ ';
+  font-size: 0.6em;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.expand-toggle.expanded::before {
+  content: '▼ ';
+}
+.expanded-list {
+  display: none;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding-right: 4px;
+}
+.expanded-list.show {
+  display: block;
+}
+.expanded-list::-webkit-scrollbar {
+  width: 4px;
+}
+.expanded-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+}
+.expanded-list::-webkit-scrollbar-thumb {
+  background: var(--accent-1);
+  border-radius: 2px;
+}
 
 /* SVG styling */
 svg text {
@@ -2185,11 +2229,18 @@ function drawBubbleChart() {
     .on('mouseover', function(event, d) {
       d3.select(this).transition().duration(200).attr('opacity', 1).attr('stroke-width', 3);
       const papers = PAPERS_DATA.filter(p => p.themes.includes(d.name));
-      const paperList = papers.slice(0, 5).map(p =>
+      const topList = papers.slice(0, 5).map(p =>
         `<a class="pdf-link" href="${getPdfUrl(p)}" target="_blank" title="View PDF">${p.title.substring(0, 55)}...</a>`
       ).join('');
-      const more = papers.length > 5 ? `<span style="color:var(--text-muted);font-size:0.75rem">...and ${papers.length - 5} more</span>` : '';
-      showTooltip(`<div class="tooltip-title">${d.name}</div><div class="tooltip-meta">${d.count} papers</div><hr style="border-color:var(--border);margin:6px 0"><div style="font-size:0.78rem">${paperList}${more}</div>`, event, true);
+      let expandSection = '';
+      if (papers.length > 5) {
+        const restList = papers.slice(5).map(p =>
+          `<a class="pdf-link" href="${getPdfUrl(p)}" target="_blank" title="View PDF">${p.title.substring(0, 55)}...</a>`
+        ).join('');
+        const uid = 'expand-' + d.name.replace(/[^a-zA-Z]/g, '');
+        expandSection = `<span class="expand-toggle" onclick="var el=document.getElementById('${uid}');el.classList.toggle('show');this.classList.toggle('expanded');this.textContent=el.classList.contains('show')?'▼ Collapse list':'▶ Show all ${papers.length - 5} more papers...'">▶ Show all ${papers.length - 5} more papers...</span><div class="expanded-list" id="${uid}">${restList}</div>`;
+      }
+      showTooltip(`<div class="tooltip-title">${d.name}</div><div class="tooltip-meta">${d.count} papers</div><hr style="border-color:var(--border);margin:6px 0"><div style="font-size:0.78rem">${topList}${expandSection}</div>`, event, true);
     })
     .on('mousemove', (event) => showTooltip(tooltip.html(), event, true))
     .on('mouseout', function() {
@@ -2303,13 +2354,17 @@ function drawStreamChart() {
     .on('mouseover', function(event, d) {
       streams.transition().duration(200).attr('opacity', 0.25);
       d3.select(this).transition().duration(200).attr('opacity', 0.95);
-      const total = STREAM_DATA.reduce((sum, sd) => sum + (sd[d.key] || 0), 0);
-      showTooltip(`<div class="tooltip-title">${d.key}</div><div class="tooltip-meta">${total} papers total</div>`, event);
+      const papers = PAPERS_DATA.filter(p => p.themes.includes(d.key));
+      const uid = 'stream-' + d.key.replace(/[^a-zA-Z]/g, '');
+      const paperLinks = papers.map(p =>
+        `<a class="pdf-link" href="${getPdfUrl(p)}" target="_blank" title="View PDF">${p.title.substring(0, 55)}...</a>`
+      ).join('');
+      showTooltip(`<div class="tooltip-title">${d.key}</div><div class="tooltip-meta">${papers.length} papers total</div><span class="expand-toggle" onclick="var el=document.getElementById('${uid}');el.classList.toggle('show');this.classList.toggle('expanded');this.textContent=el.classList.contains('show')?'▼ Collapse list':'▶ Click to view all ${papers.length} papers...'">▶ Click to view all ${papers.length} papers...</span><div class="expanded-list" id="${uid}">${paperLinks}</div>`, event, true);
     })
-    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event, true))
     .on('mouseout', function() {
       streams.transition().duration(200).attr('opacity', 0.75);
-      hideTooltip();
+      hideTooltip(300);
     });
 
   // X axis
