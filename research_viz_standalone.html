@@ -1,0 +1,2659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Publications — Prasath Lab</title>
+<meta name="description" content="Interactive visualization of research publications from Prasath Lab, spanning mathematical modeling, medical imaging, deep learning, and clinical AI applications.">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2035;
+  --bg-hover: #1e2a45;
+  --text-primary: #e8ecf4;
+  --text-secondary: #8b95b0;
+  --text-muted: #5a647d;
+  --border: #2a3450;
+  --accent-1: #6366f1;
+  --accent-2: #8b5cf6;
+  --accent-3: #a78bfa;
+  --glow: rgba(99, 102, 241, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.hero {
+  text-align: center;
+  padding: 60px 20px 40px;
+  background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, transparent 100%);
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #e8ecf4 0%, #a78bfa 50%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+  max-width: 700px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+}
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+.stat {
+  text-align: center;
+}
+.stat-num {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--accent-3);
+}
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+/* Tabs */
+.tab-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 12px 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+.tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-1);
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+}
+.tab-icon { margin-right: 6px; }
+
+/* Visualization panels */
+.viz-panel {
+  display: none;
+  animation: fadeIn 0.5s ease;
+}
+.viz-panel.active { display: block; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.viz-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.viz-header h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+.viz-header p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.viz-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 50px;
+  position: relative;
+  overflow: hidden;
+}
+.viz-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
+}
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(17, 24, 39, 0.96);
+  border: 1px solid var(--accent-1);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 1000;
+  max-width: 350px;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  line-height: 1.5;
+}
+.tooltip.visible { opacity: 1; }
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--accent-3);
+}
+.tooltip-meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* SVG styling */
+svg text {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Bubble chart legend */
+.bubble-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.bubble-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.bubble-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Stream legend */
+.stream-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.stream-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+.stream-legend-item:hover { opacity: 1; }
+.stream-legend-rect {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* Timeline filters */
+.timeline-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.filter-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.filter-btn:hover, .filter-btn.active {
+  background: var(--bg-hover);
+  color: var(--accent-3);
+  border-color: var(--accent-1);
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 40px 20px 60px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 1.8rem; }
+  .hero .subtitle { font-size: 1rem; }
+  .stats-row { gap: 20px; }
+  .stat-num { font-size: 1.8rem; }
+  .tab-btn { padding: 10px 16px; font-size: 0.8rem; }
+  .viz-container { padding: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Research Publications</h1>
+  <p class="subtitle">Interactive exploration of journal publications spanning mathematical modeling, medical imaging, machine learning, and clinical AI — from PhD research to the Prasath Lab at CCHMC.</p>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-num" id="stat-papers">129</div><div class="stat-label">Journal Papers</div></div>
+    <div class="stat"><div class="stat-num" id="stat-years">17</div><div class="stat-label">Years</div></div>
+    <div class="stat"><div class="stat-num" id="stat-journals">80+</div><div class="stat-label">Journals</div></div>
+    <div class="stat"><div class="stat-num" id="stat-themes">20</div><div class="stat-label">Research Themes</div></div>
+  </div>
+</div>
+
+<div class="tab-container">
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="bubble"><span class="tab-icon">🔵</span>Research Universe</button>
+    <button class="tab-btn" data-tab="stream"><span class="tab-icon">🌊</span>Evolution</button>
+    <button class="tab-btn" data-tab="chord"><span class="tab-icon">🕸️</span>Interconnections</button>
+    <button class="tab-btn" data-tab="timeline"><span class="tab-icon">📊</span>Timeline</button>
+    <button class="tab-btn" data-tab="sunburst"><span class="tab-icon">🏛️</span>Taxonomy</button>
+  </div>
+
+  <!-- Bubble Chart -->
+  <div class="viz-panel active" id="panel-bubble">
+    <div class="viz-header">
+      <h2>Research Universe</h2>
+      <p>Each bubble represents a research theme. Size indicates the number of papers. Hover to explore.</p>
+    </div>
+    <div class="viz-container">
+      <div id="bubble-chart"></div>
+      <div class="bubble-legend" id="bubble-legend"></div>
+    </div>
+  </div>
+
+  <!-- Stream Chart -->
+  <div class="viz-panel" id="panel-stream">
+    <div class="viz-header">
+      <h2>Research Evolution</h2>
+      <p>How research themes have grown and shifted from 2010 to 2026. Each colored stream represents a theme area.</p>
+    </div>
+    <div class="viz-container">
+      <div id="stream-chart"></div>
+      <div class="stream-legend" id="stream-legend"></div>
+    </div>
+  </div>
+
+  <!-- Chord Diagram -->
+  <div class="viz-panel" id="panel-chord">
+    <div class="viz-header">
+      <h2>Theme Interconnections</h2>
+      <p>Which research themes co-occur within the same papers. Thicker ribbons mean more shared publications.</p>
+    </div>
+    <div class="viz-container">
+      <div id="chord-chart"></div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="viz-panel" id="panel-timeline">
+    <div class="viz-header">
+      <h2>Publication Timeline</h2>
+      <p>Each dot is a paper, colored by primary theme. Hover for details.</p>
+    </div>
+    <div class="viz-container">
+      <div class="timeline-controls" id="timeline-controls"></div>
+      <div id="timeline-chart"></div>
+    </div>
+  </div>
+
+  <!-- Sunburst -->
+  <div class="viz-panel" id="panel-sunburst">
+    <div class="viz-header">
+      <h2>Research Taxonomy</h2>
+      <p>Hierarchical view: Era → Theme → Individual papers. Click to zoom in, click center to zoom out.</p>
+    </div>
+    <div class="viz-container">
+      <div id="sunburst-chart"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Prasath Lab — Cincinnati Children's Hospital Medical Center (CCHMC)</p>
+  <p style="margin-top: 6px;">Interactive visualizations generated from 129 journal publications (2010–2026)</p>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const PAPERS_DATA = [
+  {
+    "paper_num": 1,
+    "year": 2010,
+    "journal": "AMC",
+    "title": "A hybrid convex variational model for image restoration",
+    "themes": [
+      "Computer Vision",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization"
+    ],
+    "filename": "J1published_AMC10.pdf"
+  },
+  {
+    "paper_num": 2,
+    "year": 2010,
+    "journal": "IJRS",
+    "title": "Multispectral image denoising by well-posed anisotropic diffusion scheme with channel coupling",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Image Segmentation",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J2published_IJRS10.pdf"
+  },
+  {
+    "paper_num": 3,
+    "year": 2010,
+    "journal": "JAM",
+    "title": "Well-posed inhomogeneous nonlinear diffusion scheme for digital image denoising",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J3published_JAM10.pdf"
+  },
+  {
+    "paper_num": 4,
+    "year": 2010,
+    "journal": "IJTS",
+    "title": "Multichannel image restoration using combined channel information and robust M-estimator approach",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization",
+      "Remote Sensing",
+      "Signal Processing"
+    ],
+    "filename": "J4published_IJTS10.pdf"
+  },
+  {
+    "paper_num": 5,
+    "year": 2011,
+    "journal": "DTE",
+    "title": "Automatic polyp detection in Pillcam Colon 2 capsule images and videos: Preliminary feasibility report",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision"
+    ],
+    "filename": "J5published_DTE11.pdf"
+  },
+  {
+    "paper_num": 6,
+    "year": 2012,
+    "journal": "AMCS",
+    "title": "A well-posed multiscale regularization scheme for digital image denoising",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization"
+    ],
+    "filename": "J6published_AMCS12.pdf"
+  },
+  {
+    "paper_num": 7,
+    "year": 2012,
+    "journal": "IJIG",
+    "title": "An adaptive anisotropic diffusion scheme for image restoration and selective smoothing",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J7published_IJIG12.pdf"
+  },
+  {
+    "paper_num": 8,
+    "year": 2014,
+    "journal": "JMIV",
+    "title": "On a system of adaptive coupled PDEs for image restoration",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J8published_JMIV14.pdf"
+  },
+  {
+    "paper_num": 9,
+    "year": 2014,
+    "journal": "JARS",
+    "title": "Radar shadow detection in synthetic aperture radar images using digital elevation model and projections",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Remote Sensing"
+    ],
+    "filename": "J9published_JARS14.pdf"
+  },
+  {
+    "paper_num": 10,
+    "year": 2014,
+    "journal": "NONRWA",
+    "title": "Weighted and well-balanced anisotropic diffusion scheme for image denoising and restoration",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J10published_NONRWA14.pdf"
+  },
+  {
+    "paper_num": 11,
+    "year": 2014,
+    "journal": "CVIU",
+    "title": "Fast and globally convex multiphase active contours for brain MRI segmentation",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Image Segmentation",
+      "Mathematical Modeling / PDEs",
+      "Medical Imaging",
+      "Optimization",
+      "Pattern Recognition"
+    ],
+    "filename": "J11published_CVIU14.pdf"
+  },
+  {
+    "paper_num": 12,
+    "year": 2015,
+    "journal": "IP",
+    "title": "Analysis of adaptive forward-backward diffusion flows with applications in image processing",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J12published_IP15.pdf"
+  },
+  {
+    "paper_num": 13,
+    "year": 2015,
+    "journal": "JSAN",
+    "title": "On optimal multi-sensor network configuration for 3D registration",
+    "themes": [
+      "Computer Vision",
+      "IoT / Sensors",
+      "Optimization"
+    ],
+    "filename": "J13published_JSAN15.pdf"
+  },
+  {
+    "paper_num": 14,
+    "year": 2015,
+    "journal": "BRAIN",
+    "title": "Design of a novel servo-motorized laser device for visual pathways diseases",
+    "themes": [
+      "Biomedical / Clinical Applications"
+    ],
+    "filename": "J14published_BRAIN15.pdf"
+  },
+  {
+    "paper_num": 15,
+    "year": 2015,
+    "journal": "TIP",
+    "title": "Multiscale Tikhonov-total variation image restoration using spatially varying edge coherence exponent",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J15published_TIP15.pdf"
+  },
+  {
+    "paper_num": 16,
+    "year": 2015,
+    "journal": "JSPS",
+    "title": "Robust periocular recognition by fusing sparse representations of color and geometry information",
+    "themes": [
+      "Machine Learning",
+      "Mathematical Modeling / PDEs",
+      "Pattern Recognition"
+    ],
+    "filename": "J16published_JSPS15.pdf"
+  },
+  {
+    "paper_num": 17,
+    "year": 2016,
+    "journal": "IJIST",
+    "title": "Automatic segmentation of cerebral hemispheres in MR human head scans",
+    "themes": [
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J17published_IJIST16.pdf"
+  },
+  {
+    "paper_num": 18,
+    "year": 2016,
+    "journal": "IPI",
+    "title": "Color image processing by vectorial total variation with gradient channels coupling",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization"
+    ],
+    "filename": "J18published_IPI16.pdf"
+  },
+  {
+    "paper_num": 19,
+    "year": 2016,
+    "journal": "JDI",
+    "title": "Methods on skull stripping of MRI head scan images - A review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J19published_JDI16.pdf"
+  },
+  {
+    "paper_num": 20,
+    "year": 2016,
+    "journal": "INFORMATICA",
+    "title": "Adaptive coherence-enhancing diffusion flow for color images",
+    "themes": [
+      "Deep Learning",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J20published_INFORMATICA16.pdf"
+  },
+  {
+    "paper_num": 21,
+    "year": 2016,
+    "journal": "PSM",
+    "title": "Brief history of transcranial direct current stimulation (tDCS): From electrical fishes to microcontrollers",
+    "themes": [
+      "Biomedical / Clinical Applications"
+    ],
+    "filename": "J21published_PSM16.pdf"
+  },
+  {
+    "paper_num": 22,
+    "year": 2016,
+    "journal": "ACCESS",
+    "title": "Heterogeneous multi-view information fusion: Review of 3D reconstruction methods and a new registration with uncertainty modeling",
+    "themes": [
+      "Computer Vision",
+      "Data Science / Analytics",
+      "IoT / Sensors",
+      "Medical Imaging"
+    ],
+    "filename": "J22published_ACCESS16.pdf"
+  },
+  {
+    "paper_num": 23,
+    "year": 2017,
+    "journal": "JIMAGING",
+    "title": "Polyp detection and segmentation from video capsule endoscopy: A review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Image Processing",
+      "Image Segmentation"
+    ],
+    "filename": "J23published_JIMAGING17.pdf"
+  },
+  {
+    "paper_num": 24,
+    "year": 2017,
+    "journal": "INFORMATICA",
+    "title": "A hybrid wavelet-shearlet approach to robust digital image watermarking",
+    "themes": [
+      "Image Processing",
+      "IoT / Sensors",
+      "Signal Processing"
+    ],
+    "filename": "J24published_INFORMATICA17.pdf"
+  },
+  {
+    "paper_num": 25,
+    "year": 2017,
+    "journal": "JDI",
+    "title": "App review series: Radiology Pocket Game",
+    "themes": [
+      "Medical Imaging"
+    ],
+    "filename": "J25published_JDI17.pdf"
+  },
+  {
+    "paper_num": 26,
+    "year": 2017,
+    "journal": "JML",
+    "title": "Vascularization from Flexible Imaging Color Enhancement (FICE) for polyp localization",
+    "themes": [
+      "Computer Vision"
+    ],
+    "filename": "J26published_JML17.pdf"
+  },
+  {
+    "paper_num": 27,
+    "year": 2017,
+    "journal": "AJP",
+    "title": "Tensor sketch - Scene sketch generation using structure tensor",
+    "themes": [
+      "Computer Vision",
+      "Image Segmentation",
+      "Machine Learning",
+      "Pattern Recognition",
+      "Signal Processing"
+    ],
+    "filename": "J27published_AJP17.pdf"
+  },
+  {
+    "paper_num": 28,
+    "year": 2017,
+    "journal": "IEEESensors",
+    "title": "A probabilistic framework for 3D reconstruction using heterogeneous sensors",
+    "themes": [
+      "Computer Vision",
+      "Data Science / Analytics",
+      "IoT / Sensors",
+      "Pattern Recognition"
+    ],
+    "filename": "J28published_IEEESensors17.pdf"
+  },
+  {
+    "paper_num": 29,
+    "year": 2017,
+    "journal": "TECHNOLOGIES",
+    "title": "Review of computational methods on brain symmetric and asymmetric analysis from neuroimaging techniques",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Processing",
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J29published_TECHNOLOGIES17.pdf"
+  },
+  {
+    "paper_num": 30,
+    "year": 2017,
+    "journal": "INFORMATICA",
+    "title": "Quantum noise removal in X-ray images with adaptive total variation regularization",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Medical Imaging"
+    ],
+    "filename": "J30published_INFORMATICA17.pdf"
+  },
+  {
+    "paper_num": 31,
+    "year": 2017,
+    "journal": "IJBM",
+    "title": "Classification and gender recognition from veiled-faces",
+    "themes": [
+      "Computer Vision",
+      "Image Segmentation",
+      "Machine Learning",
+      "Pattern Recognition"
+    ],
+    "filename": "J31published_IJBM17.pdf"
+  },
+  {
+    "paper_num": 32,
+    "year": 2017,
+    "journal": "PRIA",
+    "title": "Image denoising by anisotropic diffusion with inter-scale information fusion",
+    "themes": [
+      "Computer Vision",
+      "Data Science / Analytics",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Pattern Recognition"
+    ],
+    "filename": "J32published_PRIA17.pdf"
+  },
+  {
+    "paper_num": 33,
+    "year": 2017,
+    "journal": "IJFIS",
+    "title": "Measuring bone density connectivity using dual energy X-ray absorptiometry images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Fuzzy / Rough Set Theory",
+      "Image Processing",
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J33published_IJFIS17.pdf"
+  },
+  {
+    "paper_num": 34,
+    "year": 2017,
+    "journal": "BPJ",
+    "title": "Enhanced multi-view point non-negative matrix factorization clustering for clinical documents analysis",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Data Science / Analytics",
+      "Machine Learning"
+    ],
+    "filename": "J34published_BPJ17.pdf"
+  },
+  {
+    "paper_num": 35,
+    "year": 2018,
+    "journal": "NN",
+    "title": "Deep learning based computer-aided diagnosis for neuroimaging data: Focused review and future potential",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J35published_NN18.pdf"
+  },
+  {
+    "paper_num": 36,
+    "year": 2018,
+    "journal": "TECHNOLOGIES",
+    "title": "An algorithm for data hiding in radiographic images and ePHI/R application",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Epidemiological Modeling",
+      "Image/Data Compression",
+      "Medical Imaging"
+    ],
+    "filename": "J36published_TECHNOLOGIES18.pdf"
+  },
+  {
+    "paper_num": 37,
+    "year": 2018,
+    "journal": "NA",
+    "title": "On time adaptive critical variable exponent vectorial diffusion flows and their applications in image processing",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J37published_NA18.pdf"
+  },
+  {
+    "paper_num": 38,
+    "year": 2018,
+    "journal": "THAM",
+    "title": "SentiML++: An extension of the SentiML sentiment annotation scheme",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "NLP / Text Mining"
+    ],
+    "filename": "J38published_THAM18.pdf"
+  },
+  {
+    "paper_num": 39,
+    "year": 2018,
+    "journal": "COAM",
+    "title": "On convergent finite difference schemes for variational-PDE based image processing",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization"
+    ],
+    "filename": "J39published_COAM18.pdf"
+  },
+  {
+    "paper_num": 40,
+    "year": 2018,
+    "journal": "IJRE",
+    "title": "Automatic image and video analysis for capsule endoscopy - An open frontier",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "IoT / Sensors"
+    ],
+    "filename": "J40published_IJRE18.pdf"
+  },
+  {
+    "paper_num": 41,
+    "year": 2018,
+    "journal": "Unknown",
+    "title": "An improved genetic algorithm with a new initialization mechanism based on regression techniques",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Optimization"
+    ],
+    "filename": "J41Publised_INFORMATION18.pdf"
+  },
+  {
+    "paper_num": 42,
+    "year": 2018,
+    "journal": "BMEL",
+    "title": "Automatic disease stage classification of glioblastoma multiforme histopathological images using deep convolutional neural network",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J42published_BMEL18.pdf"
+  },
+  {
+    "paper_num": 43,
+    "year": 2018,
+    "journal": "IJGCMS",
+    "title": "On computerizing the ancient game of \u1e6c\u0101b",
+    "themes": [
+      "Optimization"
+    ],
+    "filename": "J43published_IJGCMS18.pdf"
+  },
+  {
+    "paper_num": 44,
+    "year": 2018,
+    "journal": "SiVP",
+    "title": "Magnetic energy-based feature extraction for low-quality fingerprint images",
+    "themes": [
+      "Machine Learning",
+      "Pattern Recognition"
+    ],
+    "filename": "J44published_SiVP18.pdf"
+  },
+  {
+    "paper_num": 45,
+    "year": 2019,
+    "journal": "JCP",
+    "title": "LISA: Lightweight context-aware IoT service architecture",
+    "themes": [
+      "IoT / Sensors"
+    ],
+    "filename": "J45published_JCP19.pdf"
+  },
+  {
+    "paper_num": 46,
+    "year": 2019,
+    "journal": "IJCVSP",
+    "title": "On a secure steganography approach with increased capacity and security",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Image/Data Compression",
+      "Signal Processing"
+    ],
+    "filename": "J46published_IJCVSP19.pdf"
+  },
+  {
+    "paper_num": 47,
+    "year": 2019,
+    "journal": "TJEECS",
+    "title": "Structure tensor adaptive total variation for image restoration",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J47published_TJEECS19.pdf"
+  },
+  {
+    "paper_num": 48,
+    "year": 2019,
+    "journal": "SYMMETRY",
+    "title": "OpinionML - Opinion markup language for sentiment representation",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "NLP / Text Mining"
+    ],
+    "filename": "J48published_SYMMETRY19.pdf"
+  },
+  {
+    "paper_num": 49,
+    "year": 2019,
+    "journal": "IJRTE",
+    "title": "Broadcast scheduling problem in VANETs: A discrete genetic algorithm approach",
+    "themes": [
+      "Epidemiological Modeling",
+      "IoT / Sensors",
+      "Optimization"
+    ],
+    "filename": "J49published_IJRTE19.pdf"
+  },
+  {
+    "paper_num": 50,
+    "year": 2019,
+    "journal": "CO",
+    "title": "An adaptive image inpainting method based on the modified Mumford-Shah model and multiscale parameter estimation",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J50published_CO19.pdf"
+  },
+  {
+    "paper_num": 51,
+    "year": 2019,
+    "journal": "ER",
+    "title": "Video denoising with adaptive temporal averaging",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Image Processing"
+    ],
+    "filename": "J51published_ER19.pdf"
+  },
+  {
+    "paper_num": 52,
+    "year": 2019,
+    "journal": "INFORMATICA",
+    "title": "A review on CT and X-ray images denoising methods",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Machine Learning",
+      "Mathematical Modeling / PDEs",
+      "Medical Imaging"
+    ],
+    "filename": "J52published_INFORMATICA19_review.pdf"
+  },
+  {
+    "paper_num": 53,
+    "year": 2019,
+    "journal": "CO",
+    "title": "Analysis of a robust edge detection system in different color spaces using color and depth images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Machine Learning",
+      "Optimization",
+      "Pattern Recognition"
+    ],
+    "filename": "J53published_CO19.pdf"
+  },
+  {
+    "paper_num": 54,
+    "year": 2019,
+    "journal": "SADHANA",
+    "title": "Break, Make, and Take: An information retrieval approach",
+    "themes": [
+      "Biomedical / Clinical Applications"
+    ],
+    "filename": "J54published_SADHANA19.pdf"
+  },
+  {
+    "paper_num": 55,
+    "year": 2019,
+    "journal": "TIP",
+    "title": "Multiscale structure tensor for improved feature extraction and image regularization",
+    "themes": [
+      "Image Processing",
+      "Machine Learning",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J55published_TIP19.pdf"
+  },
+  {
+    "paper_num": 56,
+    "year": 2019,
+    "journal": "BIGDATA",
+    "title": "Effects of distance measure choice on K-nearest neighbor classifier performance: A review",
+    "themes": [
+      "Data Science / Analytics",
+      "Machine Learning",
+      "Optimization"
+    ],
+    "filename": "J56published_BIGDATA19.pdf"
+  },
+  {
+    "paper_num": 57,
+    "year": 2019,
+    "journal": "INFORMATICA",
+    "title": "An adaptive image inpainting method based on the weighted mean",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing"
+    ],
+    "filename": "J57published_INFORMATICA19_inpainting.pdf"
+  },
+  {
+    "paper_num": 58,
+    "year": 2019,
+    "journal": "THAM",
+    "title": "Systematic review and usability evaluation of writing mobile apps for children",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "IoT / Sensors"
+    ],
+    "filename": "J58published_THAM19.pdf"
+  },
+  {
+    "paper_num": 59,
+    "year": 2019,
+    "journal": "INFORMATION",
+    "title": "Choosing mutation and crossover ratios for genetic algorithms - A review with a new dynamic approach",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Optimization"
+    ],
+    "filename": "J59Published_INFORMATION19.pdf"
+  },
+  {
+    "paper_num": 60,
+    "year": 2020,
+    "journal": "THC",
+    "title": "Automatic body mass index detection using correlation of face visual cues",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision"
+    ],
+    "filename": "J60published_THC20.pdf"
+  },
+  {
+    "paper_num": 61,
+    "year": 2020,
+    "journal": "INFORMATICA",
+    "title": "Location verification technique for cluster based geographical routing in MANET",
+    "themes": [
+      "Biomedical / Clinical Applications"
+    ],
+    "filename": "J61published_INFORMATICA20.pdf"
+  },
+  {
+    "paper_num": 62,
+    "year": 2020,
+    "journal": "SCIENTOMETRICS",
+    "title": "Scientometric analysis of social science and science disciplines in a developing nation",
+    "themes": [
+      "Epidemiological Modeling"
+    ],
+    "filename": "J62published_SCIENTOMETRICS20.pdf"
+  },
+  {
+    "paper_num": 63,
+    "year": 2020,
+    "journal": "IJCST",
+    "title": "Generation of fashionable clothes using generative adversarial networks: A preliminary feasibility study",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning"
+    ],
+    "filename": "J63published_IJCST20.pdf"
+  },
+  {
+    "paper_num": 64,
+    "year": 2020,
+    "journal": "OPTIK",
+    "title": "Adaptive total variation L1 regularization for salt and pepper image denoising",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J64published_OPTIK20.pdf"
+  },
+  {
+    "paper_num": 65,
+    "year": 2020,
+    "journal": "VSPUM",
+    "title": "Second order monotone difference schemes with approximation on non-uniform grids for two-dimensional quasilinear parabolic convection-diffusion equations",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Optimization"
+    ],
+    "filename": "J65published_VSPUM20.pdf"
+  },
+  {
+    "paper_num": 66,
+    "year": 2020,
+    "journal": "CSSP",
+    "title": "Optimal nonlinear signal approximations based on piecewise constant functions",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Mathematical Modeling / PDEs",
+      "Optimization",
+      "Signal Processing"
+    ],
+    "filename": "J66published_CSSP20.pdf"
+  },
+  {
+    "paper_num": 67,
+    "year": 2020,
+    "journal": "JDI",
+    "title": "Melanoma skin cancer detection method based on adaptive principal curvature, colour normalisation and feature extraction with the ABCD rule",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Image Processing",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J67published_JDI20.pdf"
+  },
+  {
+    "paper_num": 68,
+    "year": 2020,
+    "journal": "PRIA",
+    "title": "Human visual system consistent model for wireless capsule endoscopy image enhancement and applications",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Image Processing",
+      "IoT / Sensors",
+      "Pattern Recognition"
+    ],
+    "filename": "J68published_PRIA20.pdf"
+  },
+  {
+    "paper_num": 69,
+    "year": 2020,
+    "journal": "MTA",
+    "title": "A two-stage filter for high density salt and pepper denoising",
+    "themes": [
+      "Image Processing"
+    ],
+    "filename": "J69published_MTA20.pdf"
+  },
+  {
+    "paper_num": 70,
+    "year": 2020,
+    "journal": "ACCESS",
+    "title": "Multiscale gradient maps augmented Fisher information-based image edge detection",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Pattern Recognition"
+    ],
+    "filename": "J70published_ACCESS20.pdf"
+  },
+  {
+    "paper_num": 71,
+    "year": 2020,
+    "journal": "TS",
+    "title": "Dynamic increased capacity approach steganography in spatial domain",
+    "themes": [
+      "Image/Data Compression"
+    ],
+    "filename": "J71published_TS20.pdf"
+  },
+  {
+    "paper_num": 72,
+    "year": 2020,
+    "journal": "SiVP",
+    "title": "An adaptive method for image restoration based on high-order total variation and inverse gradient",
+    "themes": [
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J72published_SiVP20.pdf"
+  },
+  {
+    "paper_num": 73,
+    "year": 2020,
+    "journal": "EJMCM",
+    "title": "Stock prediction using sentiment analysis and long short-term memory",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning",
+      "NLP / Text Mining"
+    ],
+    "filename": "J73published_EJMCM20.pdf"
+  },
+  {
+    "paper_num": 74,
+    "year": 2020,
+    "journal": "SIGNALPROCESSING",
+    "title": "An adaptive image inpainting method based on Euler's elastica with adaptive parameters estimation and the discrete gradient method",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Signal Processing"
+    ],
+    "filename": "J74published_SIGNALPROCESSING20.pdf"
+  },
+  {
+    "paper_num": 75,
+    "year": 2021,
+    "journal": "ACME",
+    "title": "Computational nuclei segmentation methods in digital pathology: A survey",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging",
+      "NLP / Text Mining",
+      "Pattern Recognition"
+    ],
+    "filename": "J75published_ACME21.pdf"
+  },
+  {
+    "paper_num": 76,
+    "year": 2021,
+    "journal": "CO",
+    "title": "Skin lesion segmentation method for dermoscopic images with convolutional neural networks and semantic segmentation",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Deep Learning",
+      "Image Processing",
+      "Image Segmentation",
+      "Medical Imaging",
+      "Pattern Recognition"
+    ],
+    "filename": "J76published_CO21.pdf"
+  },
+  {
+    "paper_num": 77,
+    "year": 2021,
+    "journal": "AIHC",
+    "title": "Improving seller-customer communication process using word embeddings",
+    "themes": [
+      "NLP / Text Mining"
+    ],
+    "filename": "J77published_AIHC21.pdf"
+  },
+  {
+    "paper_num": 78,
+    "year": 2021,
+    "journal": "NATURE",
+    "title": "In situ mapping identifies distinct vascular niches for myelopoiesis",
+    "themes": [
+      "Microbiome / Genomics"
+    ],
+    "filename": "J78published_NATURE21.pdf"
+  },
+  {
+    "paper_num": 79,
+    "year": 2021,
+    "journal": "MSSP",
+    "title": "Compression artifacts reduction with multiscale tensor regularization",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Epidemiological Modeling",
+      "Image/Data Compression",
+      "Mathematical Modeling / PDEs",
+      "Optimization",
+      "Signal Processing"
+    ],
+    "filename": "J79published_MSSP21.pdf"
+  },
+  {
+    "paper_num": 80,
+    "year": 2021,
+    "journal": "SOCO",
+    "title": "POCASUM: Policy categorizer and summarizer based on text mining and machine learning",
+    "themes": [
+      "Data Science / Analytics",
+      "Deep Learning",
+      "Machine Learning",
+      "NLP / Text Mining"
+    ],
+    "filename": "J80published_SOCO21_POCASUM.pdf"
+  },
+  {
+    "paper_num": 81,
+    "year": 2021,
+    "journal": "IJHIS",
+    "title": "CO-ResNet: Optimized ResNet model for COVID-19 diagnosis from X-ray images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J81published_IJHIS21.pdf"
+  },
+  {
+    "paper_num": 82,
+    "year": 2021,
+    "journal": "IJCISIMA",
+    "title": "Medical imaging with deep learning for COVID-19 diagnosis: A comprehensive review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J82published_IJCISIMA21.pdf"
+  },
+  {
+    "paper_num": 83,
+    "year": 2021,
+    "journal": "FCS",
+    "title": "A systematic study on the role of SentiWordNet in opinion mining",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "NLP / Text Mining"
+    ],
+    "filename": "J83published_FCS21.pdf"
+  },
+  {
+    "paper_num": 84,
+    "year": 2021,
+    "journal": "SOCO",
+    "title": "Brain tissue volume estimation to detect Alzheimer's disease in magnetic resonance images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Medical Imaging"
+    ],
+    "filename": "J84published_SOCO21_ADvolume.pdf"
+  },
+  {
+    "paper_num": 85,
+    "year": 2021,
+    "journal": "JACMP",
+    "title": "On a hybrid lossless compression technique for three-dimensional medical images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Data Science / Analytics",
+      "Image/Data Compression",
+      "Medical Imaging"
+    ],
+    "filename": "J85published_JACMP21.pdf"
+  },
+  {
+    "paper_num": 86,
+    "year": 2021,
+    "journal": "ACI",
+    "title": "Machine learning for detection of correct peripherally inserted central catheter tip position from radiology reports in infants",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Machine Learning",
+      "Medical Imaging",
+      "NLP / Text Mining"
+    ],
+    "filename": "J86published_ACI21.pdf"
+  },
+  {
+    "paper_num": 87,
+    "year": 2021,
+    "journal": "OPTIK",
+    "title": "Impulse denoising based on noise accumulation and harmonic analysis techniques",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Pattern Recognition"
+    ],
+    "filename": "J87published_OPTIK21.pdf"
+  },
+  {
+    "paper_num": 88,
+    "year": 2021,
+    "journal": "BB",
+    "title": "DeepImmuno: Deep learning-empowered prediction and generation of immunogenic peptides for T-cell immunity",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Epidemiological Modeling",
+      "Machine Learning",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J88published_BB21.pdf"
+  },
+  {
+    "paper_num": 89,
+    "year": 2021,
+    "journal": "AIR",
+    "title": "Recent developments in computational color image denoising with PDEs to deep learning: A review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Processing",
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J89published_AIR21.pdf"
+  },
+  {
+    "paper_num": 90,
+    "year": 2021,
+    "journal": "IJCAT",
+    "title": "Dermoscopic image segmentation method based on convolutional neural networks",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Deep Learning",
+      "Image Processing",
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J90published_IJCAT21.pdf"
+  },
+  {
+    "paper_num": 91,
+    "year": 2022,
+    "journal": "ACME",
+    "title": "Computational 2D and 3D medical image data compression models",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Data Science / Analytics",
+      "Deep Learning",
+      "Image Processing",
+      "Image/Data Compression",
+      "IoT / Sensors",
+      "Machine Learning",
+      "Medical Imaging",
+      "Signal Processing"
+    ],
+    "filename": "J91published_ACME22.pdf"
+  },
+  {
+    "paper_num": 92,
+    "year": 2022,
+    "journal": "JACIII",
+    "title": "Data augmentation using generative adversarial networks for multi-class segmentation of lung confocal IF images",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J92published_JACIII22.pdf"
+  },
+  {
+    "paper_num": 93,
+    "year": 2022,
+    "journal": "IJCISIMA",
+    "title": "Deep learning for medical image registration: A comprehensive review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Medical Imaging",
+      "Optimization"
+    ],
+    "filename": "J93published_IJCISIMA22.pdf"
+  },
+  {
+    "paper_num": 94,
+    "year": 2022,
+    "journal": "IJHIS",
+    "title": "Federated learning: Applications, challenges and future directions",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "IoT / Sensors",
+      "Machine Learning",
+      "Optimization"
+    ],
+    "filename": "J94published_IJHIS22.pdf"
+  },
+  {
+    "paper_num": 95,
+    "year": 2022,
+    "journal": "MTA",
+    "title": "Dementia classification using MR imaging and clinical data with voting based machine learning models",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Machine Learning"
+    ],
+    "filename": "J95published_MTA22.pdf"
+  },
+  {
+    "paper_num": 96,
+    "year": 2022,
+    "journal": "IJBM",
+    "title": "DeepVeil: Deep learning for identification of face, gender, expression recognition under veiled conditions",
+    "themes": [
+      "Deep Learning",
+      "Pattern Recognition"
+    ],
+    "filename": "J96published_IJBM22.pdf"
+  },
+  {
+    "paper_num": 97,
+    "year": 2022,
+    "journal": "BB",
+    "title": "CellDrift: Inferring perturbation responses in temporally sampled single-cell data",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Medical Imaging",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J97published_BB22.pdf"
+  },
+  {
+    "paper_num": 98,
+    "year": 2022,
+    "journal": "COAM",
+    "title": "On compacton traveling wave solutions of Zakharov-Kuznetsov-Benjamin-Bona-Mahony (ZK-BBM) equation",
+    "themes": [
+      "Mathematical Modeling / PDEs"
+    ],
+    "filename": "J98Published_COAM22.pdf"
+  },
+  {
+    "paper_num": 99,
+    "year": 2023,
+    "journal": "PR",
+    "title": "Artificial intelligence in bronchopulmonary dysplasia - Current research and unexplored frontiers",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Machine Learning"
+    ],
+    "filename": "J99published_PR23.pdf"
+  },
+  {
+    "paper_num": 100,
+    "year": 2023,
+    "journal": "NATCOMM",
+    "title": "Decision level integration of unimodal and multimodal single cell data with scTriangulate",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Machine Learning",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J100published_NATCOMM23.pdf"
+  },
+  {
+    "paper_num": 101,
+    "year": 2023,
+    "journal": "PLOSCOMPBIO",
+    "title": "maxATAC: Genome-scale transcription-factor binding prediction from ATAC-seq with deep neural networks",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J101published_PLOSCOMPBIO23.pdf"
+  },
+  {
+    "paper_num": 102,
+    "year": 2023,
+    "journal": "JDI",
+    "title": "Near lossless compression for 3D radiological images using optimal multilinear singular value decomposition (3D-VOI-OMLSVD)",
+    "themes": [
+      "Epidemiological Modeling",
+      "Image/Data Compression",
+      "Medical Imaging"
+    ],
+    "filename": "J102published_JDI23_compression.pdf"
+  },
+  {
+    "paper_num": 103,
+    "year": 2023,
+    "journal": "CSSP",
+    "title": "Signal approximations based on nonlinear and optimal piecewise affine functions",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Mathematical Modeling / PDEs",
+      "Optimization",
+      "Signal Processing"
+    ],
+    "filename": "J103published_CSSP23.pdf"
+  },
+  {
+    "paper_num": 104,
+    "year": 2023,
+    "journal": "JDI",
+    "title": "Deep learning-based skin lesion multi-class classification with global average pooling improvement",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Deep Learning",
+      "Machine Learning"
+    ],
+    "filename": "J104published_JDI23_skin.pdf"
+  },
+  {
+    "paper_num": 105,
+    "year": 2023,
+    "journal": "Microbiome",
+    "title": "MGS2AMR: A gene-centric mining of metagenomic sequencing data for pathogens and their antimicrobial resistance profile",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "IoT / Sensors",
+      "Machine Learning",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J105published_Microbiome23.pdf"
+  },
+  {
+    "paper_num": 106,
+    "year": 2023,
+    "journal": "JMM",
+    "title": "Trustworthy artificial intelligence and automatic Morse code based communication recognition with eye tracking",
+    "themes": [
+      "Computer Vision"
+    ],
+    "filename": "J106Published_JMM23.pdf"
+  },
+  {
+    "paper_num": 107,
+    "year": 2023,
+    "journal": "SiVP",
+    "title": "DIBS: Distance- and intensity-based separation filter for high-density impulse noise removal",
+    "themes": [
+      "Epidemiological Modeling",
+      "Image Processing"
+    ],
+    "filename": "J107published_SiVP23.pdf"
+  },
+  {
+    "paper_num": 108,
+    "year": 2023,
+    "journal": "IJIMT",
+    "title": "LRAP: Layered ring based adaptive and personalized usability model for mobile commerce applications",
+    "themes": [
+      "IoT / Sensors"
+    ],
+    "filename": "J108published_IJIMT23.pdf"
+  },
+  {
+    "paper_num": 109,
+    "year": 2023,
+    "journal": "NPL",
+    "title": "On the performance of new higher order transformation functions for highly efficient dense layers",
+    "themes": [
+      "Deep Learning",
+      "Machine Learning",
+      "Optimization"
+    ],
+    "filename": "J109published_NPL23.pdf"
+  },
+  {
+    "paper_num": 110,
+    "year": 2023,
+    "journal": "IJDNE",
+    "title": "Global trends in poliomyelitis research: A bibliometric analysis from 1857-2019",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Epidemiological Modeling"
+    ],
+    "filename": "J110published_IJDNE23_polio.pdf"
+  },
+  {
+    "paper_num": 111,
+    "year": 2023,
+    "journal": "IJDNE",
+    "title": "Global trends and collaborations in dengue virus research: A scientometric and bibliometric overview (1872-2019)",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Epidemiological Modeling"
+    ],
+    "filename": "J111published_IJDNE23_dengue.pdf"
+  },
+  {
+    "paper_num": 112,
+    "year": 2024,
+    "journal": "AJRCMB",
+    "title": "LungMAP portal ecosystem: Systems-level exploration of the lung",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Data Science / Analytics",
+      "Medical Imaging",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J112published_AJRCMB24.pdf"
+  },
+  {
+    "paper_num": 113,
+    "year": 2024,
+    "journal": "POMA",
+    "title": "Deep learning-enhanced 3D echo decorrelation imaging for monitoring radiofrequency ablation in ex vivo human liver",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J113Published_POMA24.pdf"
+  },
+  {
+    "paper_num": 114,
+    "year": 2024,
+    "journal": "CBM",
+    "title": "Artificial intelligence image-based prediction models in IBD exhibit high risk of bias: A systematic review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Deep Learning",
+      "Machine Learning"
+    ],
+    "filename": "J114published_CBM24_IBD.pdf"
+  },
+  {
+    "paper_num": 115,
+    "year": 2024,
+    "journal": "GI",
+    "title": "Machine learning-based prediction of pediatric ulcerative colitis treatment response using diagnostic histopathology",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J115published_GI24.pdf"
+  },
+  {
+    "paper_num": 116,
+    "year": 2024,
+    "journal": "SOCO",
+    "title": "Color image restoration by filtering methods: A review",
+    "themes": [
+      "Data Science / Analytics",
+      "Fuzzy / Rough Set Theory",
+      "Image Processing",
+      "Remote Sensing",
+      "Signal Processing"
+    ],
+    "filename": "J116published_SOCO24.pdf"
+  },
+  {
+    "paper_num": 117,
+    "year": 2024,
+    "journal": "ACR",
+    "title": "Deep learning-based multimodal spatial transcriptomics analysis for cancer",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Data Science / Analytics",
+      "Deep Learning",
+      "Image Segmentation",
+      "Machine Learning",
+      "Microbiome / Genomics"
+    ],
+    "filename": "J117published_ACR24.pdf"
+  },
+  {
+    "paper_num": 118,
+    "year": 2024,
+    "journal": "CBM",
+    "title": "Deep learning-based IDH1 gene mutation prediction using histopathological imaging and clinical data",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J118published_CBM24_IDH1.pdf"
+  },
+  {
+    "paper_num": 119,
+    "year": 2024,
+    "journal": "NCAA",
+    "title": "KDTL: Knowledge-distilled transfer learning framework for diagnosing mental disorders using EEG spectrograms",
+    "themes": [
+      "Deep Learning",
+      "Machine Learning",
+      "Signal Processing"
+    ],
+    "filename": "J119published_NCAA24.pdf"
+  },
+  {
+    "paper_num": 120,
+    "year": 2025,
+    "journal": "CAAITIT",
+    "title": "Hyperspectral image restoration using noise gradient and dual priors under mixed noise conditions",
+    "themes": [
+      "Epidemiological Modeling",
+      "Image Processing",
+      "Machine Learning",
+      "Remote Sensing",
+      "Signal Processing"
+    ],
+    "filename": "J120published_CAAITIT25.pdf"
+  },
+  {
+    "paper_num": 121,
+    "year": 2025,
+    "journal": "ACCESS",
+    "title": "Multimodal ensemble fusion deep learning using histopathological images and clinical data for glioma subtype classification",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J121published_ACCESS25.pdf"
+  },
+  {
+    "paper_num": 122,
+    "year": 2025,
+    "journal": "IETIP",
+    "title": "Variational weighted lp-lq regularization for hyperspectral image restoration under mixed noise",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Image Processing",
+      "Mathematical Modeling / PDEs",
+      "Optimization",
+      "Remote Sensing",
+      "Signal Processing"
+    ],
+    "filename": "J122published_IETIP25.pdf"
+  },
+  {
+    "paper_num": 123,
+    "year": 2025,
+    "journal": "CBM",
+    "title": "Advancements in automated nuclei segmentation for histopathology using you only look once-driven approaches: A systematic review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Computer Vision",
+      "Deep Learning",
+      "Image Segmentation",
+      "Medical Imaging"
+    ],
+    "filename": "J123published_CBM25_yolo.pdf"
+  },
+  {
+    "paper_num": 124,
+    "year": 2025,
+    "journal": "CBM",
+    "title": "Benchmarking HEp-2 cell segmentation methods in indirect immunofluorescence images - Standard models to deep learning",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Processing",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J124published_CBM25hep2.pdf"
+  },
+  {
+    "paper_num": 125,
+    "year": 2025,
+    "journal": "SciRep",
+    "title": "Web based AI-driven framework combining multi-modal data with CNN and LLM for Parkinson's disease diagnosis",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Machine Learning",
+      "Medical Imaging",
+      "Microbiome / Genomics",
+      "NLP / Text Mining"
+    ],
+    "filename": "J125published_SciRep25.pdf"
+  },
+  {
+    "paper_num": 126,
+    "year": 2025,
+    "journal": "IJIST",
+    "title": "Self-supervised DRL with twin critics: A novel framework for glioblastoma survival prognostication",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Segmentation",
+      "Machine Learning"
+    ],
+    "filename": "J126published_IJIST25.pdf"
+  },
+  {
+    "paper_num": 127,
+    "year": 2026,
+    "journal": "CMIG",
+    "title": "A multi-expert deep learning framework with LLM-guided arbitration for multimodal histopathology prediction",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Medical Imaging",
+      "NLP / Text Mining"
+    ],
+    "filename": "J127published_CMIG26.pdf"
+  },
+  {
+    "paper_num": 128,
+    "year": 2026,
+    "journal": "NCAA",
+    "title": "Unsupervised biomarker discovery through vision-language model fusion: A multimodal approach to clinical data integration",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Deep Learning",
+      "Image Segmentation",
+      "Machine Learning",
+      "Medical Imaging",
+      "Microbiome / Genomics",
+      "NLP / Text Mining"
+    ],
+    "filename": "J128published_NCAA26.pdf"
+  },
+  {
+    "paper_num": 129,
+    "year": 2026,
+    "journal": "JIIM",
+    "title": "Pathology public datasets for artificial intelligence: A systematic review",
+    "themes": [
+      "Biomedical / Clinical Applications",
+      "Machine Learning",
+      "Medical Imaging"
+    ],
+    "filename": "J129published_JIIM26.pdf"
+  }
+];
+
+const CHORD_DATA = {"themes": ["Biomedical / Clinical Applications", "Computer Vision", "Data Science / Analytics", "Deep Learning", "Epidemiological Modeling", "Fuzzy / Rough Set Theory", "Image Processing", "Image Segmentation", "Image/Data Compression", "IoT / Sensors", "Machine Learning", "Mathematical Modeling / PDEs", "Medical Imaging", "Microbiome / Genomics", "NLP / Text Mining", "Optimization", "Pattern Recognition", "Remote Sensing", "Signal Processing"], "matrix": [[0, 13, 5, 28, 5, 1, 27, 17, 5, 6, 29, 14, 33, 9, 9, 11, 7, 2, 9], [13, 0, 3, 5, 0, 0, 8, 7, 1, 5, 5, 2, 5, 0, 0, 2, 6, 0, 2], [5, 3, 0, 3, 0, 1, 3, 1, 2, 3, 5, 1, 4, 2, 1, 1, 2, 1, 2], [28, 5, 3, 0, 1, 0, 7, 10, 1, 2, 20, 2, 18, 5, 5, 3, 2, 0, 3], [5, 0, 0, 1, 0, 0, 2, 0, 3, 1, 2, 1, 2, 1, 0, 2, 0, 1, 2], [1, 0, 1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1], [27, 8, 3, 7, 2, 2, 0, 10, 1, 3, 8, 26, 12, 0, 0, 8, 7, 4, 12], [17, 7, 1, 10, 0, 1, 10, 0, 0, 0, 10, 2, 14, 2, 2, 1, 5, 0, 2], [5, 1, 2, 1, 3, 0, 1, 0, 0, 1, 1, 1, 4, 0, 0, 1, 0, 0, 3], [6, 5, 3, 2, 1, 0, 3, 0, 1, 0, 3, 0, 2, 1, 0, 3, 2, 0, 2], [29, 5, 5, 20, 2, 0, 8, 10, 1, 3, 0, 3, 15, 6, 6, 4, 6, 1, 5], [14, 2, 1, 2, 1, 0, 26, 2, 1, 0, 3, 0, 3, 0, 0, 10, 3, 2, 11], [33, 5, 4, 18, 2, 1, 12, 14, 4, 2, 15, 3, 0, 4, 5, 2, 3, 0, 1], [9, 0, 2, 5, 1, 0, 0, 2, 0, 1, 6, 0, 4, 0, 2, 0, 0, 0, 0], [9, 0, 1, 5, 0, 0, 0, 2, 0, 0, 6, 0, 5, 2, 0, 0, 1, 0, 0], [11, 2, 1, 3, 2, 0, 8, 1, 1, 3, 4, 10, 2, 0, 0, 0, 2, 2, 5], [7, 6, 2, 2, 0, 0, 7, 5, 0, 2, 6, 3, 3, 0, 1, 2, 0, 0, 1], [2, 0, 1, 0, 1, 1, 4, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0, 0, 4], [9, 2, 2, 3, 2, 1, 12, 2, 3, 2, 5, 11, 1, 0, 0, 5, 1, 4, 0]]};
+
+const STREAM_DATA = [{"year": 2010, "Biomedical / Clinical Applications": 1, "Computer Vision": 1, "Data Science / Analytics": 0, "Deep Learning": 0, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 4, "Image Segmentation": 1, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 0, "Mathematical Modeling / PDEs": 4, "Medical Imaging": 0, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 2, "Pattern Recognition": 0, "Remote Sensing": 1, "Signal Processing": 2}, {"year": 2011, "Biomedical / Clinical Applications": 1, "Computer Vision": 1, "Data Science / Analytics": 0, "Deep Learning": 0, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 0, "Image Segmentation": 0, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 0, "Mathematical Modeling / PDEs": 0, "Medical Imaging": 0, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 0, "Pattern Recognition": 0, "Remote Sensing": 0, "Signal Processing": 0}, {"year": 2012, "Biomedical / Clinical Applications": 0, "Computer Vision": 0, "Data Science / Analytics": 0, "Deep Learning": 0, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 2, "Image Segmentation": 0, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 0, "Mathematical Modeling / PDEs": 2, "Medical Imaging": 0, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 1, "Pattern Recognition": 0, "Remote Sensing": 0, "Signal Processing": 0}, {"year": 2014, "Biomedical / Clinical Applications": 2, "Computer Vision": 0, "Data Science / Analytics": 0, "Deep Learning": 0, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 3, "Image Segmentation": 1, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 0, "Mathematical Modeling / PDEs": 3, "Medical Imaging": 1, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 1, "Pattern Recognition": 1, "Remote Sensing": 1, "Signal Processing": 0}, {"year": 2015, "Biomedical / Clinical Applications": 1, "Computer Vision": 1, "Data Science / Analytics": 0, "Deep Learning": 0, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 2, "Image Segmentation": 0, "Image/Data Compression": 0, "IoT / Sensors": 1, "Machine Learning": 1, "Mathematical Modeling / PDEs": 3, "Medical Imaging": 0, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 1, "Pattern Recognition": 1, "Remote Sensing": 0, "Signal Processing": 1}, {"year": 2016, "Biomedical / Clinical Applications": 2, "Computer Vision": 1, "Data Science / Analytics": 1, "Deep Learning": 1, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 3, "Image Segmentation": 2, "Image/Data Compression": 0, "IoT / Sensors": 1, "Machine Learning": 0, "Mathematical Modeling / PDEs": 2, "Medical Imaging": 3, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 1, "Pattern Recognition": 0, "Remote Sensing": 0, "Signal Processing": 1}, {"year": 2017, "Biomedical / Clinical Applications": 5, "Computer Vision": 6, "Data Science / Analytics": 3, "Deep Learning": 1, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 1, "Image Processing": 6, "Image Segmentation": 5, "Image/Data Compression": 0, "IoT / Sensors": 2, "Machine Learning": 3, "Mathematical Modeling / PDEs": 2, "Medical Imaging": 4, "Microbiome / Genomics": 0, "NLP / Text Mining": 0, "Optimization": 0, "Pattern Recognition": 4, "Remote Sensing": 0, "Signal Processing": 2}, {"year": 2018, "Biomedical / Clinical Applications": 7, "Computer Vision": 1, "Data Science / Analytics": 0, "Deep Learning": 2, "Epidemiological Modeling": 1, "Fuzzy / Rough Set Theory": 0, "Image Processing": 2, "Image Segmentation": 0, "Image/Data Compression": 1, "IoT / Sensors": 1, "Machine Learning": 2, "Mathematical Modeling / PDEs": 2, "Medical Imaging": 3, "Microbiome / Genomics": 0, "NLP / Text Mining": 1, "Optimization": 3, "Pattern Recognition": 1, "Remote Sensing": 0, "Signal Processing": 0}, {"year": 2019, "Biomedical / Clinical Applications": 11, "Computer Vision": 2, "Data Science / Analytics": 1, "Deep Learning": 0, "Epidemiological Modeling": 1, "Fuzzy / Rough Set Theory": 0, "Image Processing": 7, "Image Segmentation": 0, "Image/Data Compression": 1, "IoT / Sensors": 3, "Machine Learning": 4, "Mathematical Modeling / PDEs": 4, "Medical Imaging": 1, "Microbiome / Genomics": 0, "NLP / Text Mining": 1, "Optimization": 4, "Pattern Recognition": 1, "Remote Sensing": 0, "Signal Processing": 3}, {"year": 2020, "Biomedical / Clinical Applications": 11, "Computer Vision": 3, "Data Science / Analytics": 0, "Deep Learning": 2, "Epidemiological Modeling": 1, "Fuzzy / Rough Set Theory": 0, "Image Processing": 7, "Image Segmentation": 1, "Image/Data Compression": 1, "IoT / Sensors": 1, "Machine Learning": 3, "Mathematical Modeling / PDEs": 4, "Medical Imaging": 1, "Microbiome / Genomics": 0, "NLP / Text Mining": 1, "Optimization": 2, "Pattern Recognition": 2, "Remote Sensing": 0, "Signal Processing": 2}, {"year": 2021, "Biomedical / Clinical Applications": 13, "Computer Vision": 2, "Data Science / Analytics": 2, "Deep Learning": 7, "Epidemiological Modeling": 2, "Fuzzy / Rough Set Theory": 0, "Image Processing": 4, "Image Segmentation": 4, "Image/Data Compression": 2, "IoT / Sensors": 0, "Machine Learning": 5, "Mathematical Modeling / PDEs": 2, "Medical Imaging": 8, "Microbiome / Genomics": 2, "NLP / Text Mining": 5, "Optimization": 1, "Pattern Recognition": 3, "Remote Sensing": 0, "Signal Processing": 1}, {"year": 2022, "Biomedical / Clinical Applications": 6, "Computer Vision": 0, "Data Science / Analytics": 1, "Deep Learning": 5, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 1, "Image Segmentation": 1, "Image/Data Compression": 1, "IoT / Sensors": 2, "Machine Learning": 4, "Mathematical Modeling / PDEs": 1, "Medical Imaging": 4, "Microbiome / Genomics": 1, "NLP / Text Mining": 0, "Optimization": 2, "Pattern Recognition": 1, "Remote Sensing": 0, "Signal Processing": 1}, {"year": 2023, "Biomedical / Clinical Applications": 8, "Computer Vision": 2, "Data Science / Analytics": 0, "Deep Learning": 3, "Epidemiological Modeling": 4, "Fuzzy / Rough Set Theory": 0, "Image Processing": 1, "Image Segmentation": 0, "Image/Data Compression": 1, "IoT / Sensors": 2, "Machine Learning": 5, "Mathematical Modeling / PDEs": 1, "Medical Imaging": 1, "Microbiome / Genomics": 3, "NLP / Text Mining": 0, "Optimization": 2, "Pattern Recognition": 0, "Remote Sensing": 0, "Signal Processing": 1}, {"year": 2024, "Biomedical / Clinical Applications": 6, "Computer Vision": 1, "Data Science / Analytics": 3, "Deep Learning": 5, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 1, "Image Processing": 2, "Image Segmentation": 1, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 5, "Mathematical Modeling / PDEs": 0, "Medical Imaging": 4, "Microbiome / Genomics": 2, "NLP / Text Mining": 0, "Optimization": 0, "Pattern Recognition": 0, "Remote Sensing": 1, "Signal Processing": 2}, {"year": 2025, "Biomedical / Clinical Applications": 6, "Computer Vision": 1, "Data Science / Analytics": 0, "Deep Learning": 5, "Epidemiological Modeling": 1, "Fuzzy / Rough Set Theory": 0, "Image Processing": 3, "Image Segmentation": 3, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 5, "Mathematical Modeling / PDEs": 1, "Medical Imaging": 4, "Microbiome / Genomics": 1, "NLP / Text Mining": 1, "Optimization": 1, "Pattern Recognition": 0, "Remote Sensing": 2, "Signal Processing": 2}, {"year": 2026, "Biomedical / Clinical Applications": 3, "Computer Vision": 0, "Data Science / Analytics": 0, "Deep Learning": 2, "Epidemiological Modeling": 0, "Fuzzy / Rough Set Theory": 0, "Image Processing": 0, "Image Segmentation": 1, "Image/Data Compression": 0, "IoT / Sensors": 0, "Machine Learning": 2, "Mathematical Modeling / PDEs": 0, "Medical Imaging": 3, "Microbiome / Genomics": 1, "NLP / Text Mining": 2, "Optimization": 0, "Pattern Recognition": 0, "Remote Sensing": 0, "Signal Processing": 0}];
+
+const ALL_THEMES = ["Biomedical / Clinical Applications", "Computer Vision", "Data Science / Analytics", "Deep Learning", "Epidemiological Modeling", "Fuzzy / Rough Set Theory", "Image Processing", "Image Segmentation", "Image/Data Compression", "IoT / Sensors", "Machine Learning", "Mathematical Modeling / PDEs", "Medical Imaging", "Microbiome / Genomics", "NLP / Text Mining", "Optimization", "Pattern Recognition", "Remote Sensing", "Signal Processing"];
+
+</script>
+<script>
+// ─── Color palette ──────────────────────────────────────────────────
+const THEME_COLORS = {
+  'Biomedical / Clinical Applications': '#6366f1',
+  'Machine Learning': '#8b5cf6',
+  'Image Processing': '#06b6d4',
+  'Computer Vision': '#14b8a6',
+  'Mathematical Modeling / PDEs': '#f59e0b',
+  'Graph / Network Analysis': '#ef4444',
+  'Medical Imaging': '#3b82f6',
+  'Deep Learning': '#a855f7',
+  'Image Segmentation': '#22d3ee',
+  'Optimization': '#f97316',
+  'Signal Processing': '#10b981',
+  'IoT / Sensors': '#ec4899',
+  'Pattern Recognition': '#84cc16',
+  'Epidemiological Modeling': '#e11d48',
+  'Data Science / Analytics': '#0ea5e9',
+  'Image/Data Compression': '#64748b',
+  'NLP / Text Mining': '#d946ef',
+  'Microbiome / Genomics': '#2dd4bf',
+  'Remote Sensing': '#facc15',
+  'Fuzzy / Rough Set Theory': '#fb923c'
+};
+
+function getColor(theme) {
+  return THEME_COLORS[theme] || '#6366f1';
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────
+const tooltip = d3.select('#tooltip');
+
+function showTooltip(html, event) {
+  tooltip.html(html).classed('visible', true);
+  const ttNode = tooltip.node();
+  const ttW = ttNode.offsetWidth;
+  const ttH = ttNode.offsetHeight;
+  let x = event.clientX + 14;
+  let y = event.clientY - 10;
+  if (x + ttW > window.innerWidth - 10) x = event.clientX - ttW - 14;
+  if (y + ttH > window.innerHeight - 10) y = window.innerHeight - ttH - 10;
+  if (y < 10) y = 10;
+  tooltip.style('left', x + 'px').style('top', y + 'px');
+}
+
+function hideTooltip() {
+  tooltip.classed('visible', false);
+}
+
+// ─── Tab switching ──────────────────────────────────────────────
+const tabBtns = document.querySelectorAll('.tab-btn');
+const vizPanels = document.querySelectorAll('.viz-panel');
+const vizInitialized = {};
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    vizPanels.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (!vizInitialized[tab]) {
+      vizInitialized[tab] = true;
+      if (tab === 'stream') drawStreamChart();
+      if (tab === 'chord') drawChordDiagram();
+      if (tab === 'timeline') drawTimeline();
+      if (tab === 'sunburst') drawSunburst();
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 1. BUBBLE CHART
+// ═══════════════════════════════════════════════════════════════════
+function drawBubbleChart() {
+  const container = document.getElementById('bubble-chart');
+  const width = container.clientWidth;
+  const height = Math.max(500, width * 0.55);
+
+  // Aggregate theme data
+  const themeCounts = {};
+  PAPERS_DATA.forEach(p => {
+    p.themes.forEach(t => {
+      if (t === 'Other') return;
+      themeCounts[t] = (themeCounts[t] || 0) + 1;
+    });
+  });
+
+  const nodes = Object.entries(themeCounts).map(([name, count]) => ({
+    name, count,
+    radius: Math.sqrt(count) * (width < 600 ? 5 : 7) + 8
+  }));
+
+  const svg = d3.select('#bubble-chart')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('viewBox', `0 0 ${width} ${height}`);
+
+  // Defs for glow filter
+  const defs = svg.append('defs');
+  const filter = defs.append('filter').attr('id', 'glow');
+  filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'coloredBlur');
+  const merge = filter.append('feMerge');
+  merge.append('feMergeNode').attr('in', 'coloredBlur');
+  merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+  const simulation = d3.forceSimulation(nodes)
+    .force('charge', d3.forceManyBody().strength(d => -d.radius * 1.5))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(d => d.radius + 4))
+    .force('x', d3.forceX(width / 2).strength(0.05))
+    .force('y', d3.forceY(height / 2).strength(0.05));
+
+  const bubbleGroup = svg.append('g');
+
+  const bubbles = bubbleGroup.selectAll('.bubble')
+    .data(nodes)
+    .enter()
+    .append('g')
+    .attr('class', 'bubble')
+    .style('cursor', 'pointer');
+
+  // Outer glow circle
+  bubbles.append('circle')
+    .attr('r', d => d.radius)
+    .attr('fill', d => getColor(d.name))
+    .attr('opacity', 0.15)
+    .attr('filter', 'url(#glow)');
+
+  // Main circle
+  bubbles.append('circle')
+    .attr('r', d => d.radius)
+    .attr('fill', d => getColor(d.name))
+    .attr('opacity', 0.7)
+    .attr('stroke', d => getColor(d.name))
+    .attr('stroke-width', 1.5)
+    .attr('stroke-opacity', 0.5)
+    .on('mouseover', function(event, d) {
+      d3.select(this).transition().duration(200).attr('opacity', 1).attr('stroke-width', 3);
+      const papers = PAPERS_DATA.filter(p => p.themes.includes(d.name));
+      const paperList = papers.slice(0, 5).map(p => `• ${p.title.substring(0, 60)}...`).join('<br>');
+      const more = papers.length > 5 ? `<br><span style="color:var(--text-muted)">...and ${papers.length - 5} more</span>` : '';
+      showTooltip(`<div class="tooltip-title">${d.name}</div><div class="tooltip-meta">${d.count} papers</div><hr style="border-color:var(--border);margin:6px 0"><div style="font-size:0.78rem">${paperList}${more}</div>`, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function() {
+      d3.select(this).transition().duration(200).attr('opacity', 0.7).attr('stroke-width', 1.5);
+      hideTooltip();
+    });
+
+  // Labels
+  bubbles.append('text')
+    .text(d => d.radius > 28 ? d.name.split('/')[0].trim() : '')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => d.radius > 40 ? '-0.3em' : '0.1em')
+    .attr('fill', 'white')
+    .attr('font-size', d => Math.min(d.radius / 3.5, 12) + 'px')
+    .attr('font-weight', 600)
+    .style('pointer-events', 'none');
+
+  bubbles.append('text')
+    .text(d => d.radius > 35 ? d.count : (d.radius > 22 ? d.count : ''))
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => d.radius > 40 ? '1em' : '0.35em')
+    .attr('fill', 'rgba(255,255,255,0.7)')
+    .attr('font-size', d => Math.min(d.radius / 3, 11) + 'px')
+    .attr('font-weight', 500)
+    .style('pointer-events', 'none');
+
+  simulation.on('tick', () => {
+    bubbles.attr('transform', d => {
+      d.x = Math.max(d.radius, Math.min(width - d.radius, d.x));
+      d.y = Math.max(d.radius, Math.min(height - d.radius, d.y));
+      return `translate(${d.x},${d.y})`;
+    });
+  });
+
+  // Legend
+  const legend = document.getElementById('bubble-legend');
+  nodes.sort((a, b) => b.count - a.count).forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'bubble-legend-item';
+    item.innerHTML = `<span class="bubble-legend-dot" style="background:${getColor(d.name)}"></span>${d.name} (${d.count})`;
+    legend.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 2. STREAM CHART
+// ═══════════════════════════════════════════════════════════════════
+function drawStreamChart() {
+  const container = document.getElementById('stream-chart');
+  const width = container.clientWidth;
+  const height = Math.max(420, width * 0.4);
+  const margin = { top: 30, right: 30, bottom: 50, left: 50 };
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+
+  // Pick top 10 themes for readability
+  const themeTotals = {};
+  ALL_THEMES.forEach(t => { themeTotals[t] = 0; });
+  STREAM_DATA.forEach(d => {
+    ALL_THEMES.forEach(t => { themeTotals[t] += (d[t] || 0); });
+  });
+  const topThemes = Object.entries(themeTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(d => d[0]);
+
+  const svg = d3.select('#stream-chart')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('viewBox', `0 0 ${width} ${height}`);
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleLinear()
+    .domain(d3.extent(STREAM_DATA, d => d.year))
+    .range([0, w]);
+
+  const stack = d3.stack()
+    .keys(topThemes)
+    .offset(d3.stackOffsetWiggle)
+    .order(d3.stackOrderInsideOut);
+
+  const series = stack(STREAM_DATA);
+
+  const y = d3.scaleLinear()
+    .domain([
+      d3.min(series, s => d3.min(s, d => d[0])),
+      d3.max(series, s => d3.max(s, d => d[1]))
+    ])
+    .range([h, 0]);
+
+  const area = d3.area()
+    .x(d => x(d.data.year))
+    .y0(d => y(d[0]))
+    .y1(d => y(d[1]))
+    .curve(d3.curveBasis);
+
+  // Draw streams
+  const streams = g.selectAll('.stream')
+    .data(series)
+    .enter()
+    .append('path')
+    .attr('class', 'stream')
+    .attr('d', area)
+    .attr('fill', d => getColor(d.key))
+    .attr('opacity', 0.75)
+    .attr('stroke', d => getColor(d.key))
+    .attr('stroke-width', 0.5)
+    .attr('stroke-opacity', 0.3)
+    .on('mouseover', function(event, d) {
+      streams.transition().duration(200).attr('opacity', 0.25);
+      d3.select(this).transition().duration(200).attr('opacity', 0.95);
+      const total = STREAM_DATA.reduce((sum, sd) => sum + (sd[d.key] || 0), 0);
+      showTooltip(`<div class="tooltip-title">${d.key}</div><div class="tooltip-meta">${total} papers total</div>`, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function() {
+      streams.transition().duration(200).attr('opacity', 0.75);
+      hideTooltip();
+    });
+
+  // X axis
+  const years = STREAM_DATA.map(d => d.year);
+  g.append('g')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x).tickValues(years).tickFormat(d3.format('d')))
+    .selectAll('text')
+    .style('fill', 'var(--text-secondary)')
+    .style('font-size', '11px');
+
+  g.selectAll('.domain, .tick line').style('stroke', 'var(--border)');
+
+  // Era labels
+  const eras = [
+    { label: 'PhD Era', x1: 2010, x2: 2014 },
+    { label: 'Transition', x1: 2015, x2: 2017 },
+    { label: 'CCHMC Lab', x1: 2018, x2: 2026 }
+  ];
+  eras.forEach(era => {
+    const cx = x((era.x1 + era.x2) / 2);
+    g.append('text')
+      .attr('x', cx)
+      .attr('y', -10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--text-muted)')
+      .attr('font-size', '11px')
+      .attr('font-weight', 500)
+      .text(era.label);
+  });
+
+  // Legend
+  const legend = document.getElementById('stream-legend');
+  topThemes.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'stream-legend-item';
+    item.innerHTML = `<span class="stream-legend-rect" style="background:${getColor(t)}"></span>${t}`;
+    legend.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 3. CHORD DIAGRAM
+// ═══════════════════════════════════════════════════════════════════
+function drawChordDiagram() {
+  const container = document.getElementById('chord-chart');
+  const size = Math.min(container.clientWidth, 700);
+  const outerRadius = size / 2 - 80;
+  const innerRadius = outerRadius - 20;
+
+  // Filter to top 12 themes for readability
+  const totals = CHORD_DATA.themes.map((t, i) =>
+    ({ theme: t, idx: i, total: CHORD_DATA.matrix[i].reduce((a, b) => a + b, 0) })
+  );
+  totals.sort((a, b) => b.total - a.total);
+  const topIdx = totals.slice(0, 12).map(d => d.idx);
+  const themes = topIdx.map(i => CHORD_DATA.themes[i]);
+  const matrix = topIdx.map(i => topIdx.map(j => CHORD_DATA.matrix[i][j]));
+
+  const svg = d3.select('#chord-chart')
+    .append('svg')
+    .attr('width', size)
+    .attr('height', size)
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .append('g')
+    .attr('transform', `translate(${size/2},${size/2})`);
+
+  const chord = d3.chord()
+    .padAngle(0.05)
+    .sortSubgroups(d3.descending)(matrix);
+
+  const arc = d3.arc().innerRadius(innerRadius).outerRadius(outerRadius);
+  const ribbon = d3.ribbon().radius(innerRadius - 1);
+
+  // Arcs
+  const arcs = svg.append('g')
+    .selectAll('g')
+    .data(chord.groups)
+    .enter()
+    .append('g');
+
+  arcs.append('path')
+    .attr('d', arc)
+    .attr('fill', d => getColor(themes[d.index]))
+    .attr('stroke', d => d3.color(getColor(themes[d.index])).darker(0.5))
+    .attr('stroke-width', 1)
+    .on('mouseover', function(event, d) {
+      ribbons.transition().duration(200).attr('opacity', r =>
+        r.source.index === d.index || r.target.index === d.index ? 0.8 : 0.05
+      );
+      showTooltip(`<div class="tooltip-title">${themes[d.index]}</div><div class="tooltip-meta">Connected to ${chord.filter(r => r.source.index === d.index || r.target.index === d.index).length} other themes</div>`, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function() {
+      ribbons.transition().duration(200).attr('opacity', 0.55);
+      hideTooltip();
+    });
+
+  // Arc labels
+  arcs.append('text')
+    .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
+    .attr('dy', '0.35em')
+    .attr('transform', d => {
+      const angle = d.angle * 180 / Math.PI - 90;
+      const flip = d.angle > Math.PI;
+      return `rotate(${angle}) translate(${outerRadius + 10}) ${flip ? 'rotate(180)' : ''}`;
+    })
+    .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
+    .attr('fill', 'var(--text-secondary)')
+    .attr('font-size', '10px')
+    .attr('font-weight', 500)
+    .text(d => {
+      const name = themes[d.index];
+      return name.length > 25 ? name.split('/')[0].trim() : name;
+    });
+
+  // Ribbons
+  const ribbons = svg.append('g')
+    .selectAll('path')
+    .data(chord)
+    .enter()
+    .append('path')
+    .attr('d', ribbon)
+    .attr('fill', d => getColor(themes[d.source.index]))
+    .attr('opacity', 0.55)
+    .attr('stroke', 'none')
+    .on('mouseover', function(event, d) {
+      d3.select(this).transition().duration(200).attr('opacity', 0.9);
+      showTooltip(`<div class="tooltip-title">${themes[d.source.index]} ↔ ${themes[d.target.index]}</div><div class="tooltip-meta">${d.source.value} co-occurrences</div>`, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function() {
+      d3.select(this).transition().duration(200).attr('opacity', 0.55);
+      hideTooltip();
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 4. TIMELINE
+// ═══════════════════════════════════════════════════════════════════
+function drawTimeline() {
+  const container = document.getElementById('timeline-chart');
+  const width = container.clientWidth;
+  const height = Math.max(450, width * 0.45);
+  const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+
+  const papers = PAPERS_DATA.filter(p => p.year && p.themes.length > 0 && p.themes[0] !== 'Other');
+
+  // Add filter buttons
+  const themes = [...new Set(papers.flatMap(p => p.themes))].filter(t => t !== 'Other').sort();
+  const controls = document.getElementById('timeline-controls');
+  const allBtn = document.createElement('button');
+  allBtn.className = 'filter-btn active';
+  allBtn.textContent = 'All';
+  allBtn.onclick = () => filterTimeline(null);
+  controls.appendChild(allBtn);
+  themes.slice(0, 12).forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.textContent = t.split('/')[0].trim();
+    btn.dataset.theme = t;
+    btn.onclick = () => filterTimeline(t);
+    controls.appendChild(btn);
+  });
+
+  const svg = d3.select('#timeline-chart')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('viewBox', `0 0 ${width} ${height}`);
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleLinear()
+    .domain([2009.5, 2026.5])
+    .range([0, w]);
+
+  // Count papers per year for y "jitter"
+  const yearCounts = {};
+  papers.forEach(p => {
+    yearCounts[p.year] = (yearCounts[p.year] || 0);
+    p._yIdx = yearCounts[p.year]++;
+  });
+  const maxPerYear = Math.max(...Object.values(yearCounts));
+
+  const y = d3.scaleLinear()
+    .domain([0, maxPerYear])
+    .range([h - 20, 20]);
+
+  // X axis
+  const years = [...new Set(papers.map(p => p.year))].sort();
+  g.append('g')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x).tickValues(years).tickFormat(d3.format('d')))
+    .selectAll('text')
+    .style('fill', 'var(--text-secondary)')
+    .style('font-size', '11px');
+  g.selectAll('.domain, .tick line').style('stroke', 'var(--border)');
+
+  // Year column background
+  years.forEach(yr => {
+    g.append('rect')
+      .attr('x', x(yr) - 15)
+      .attr('y', 0)
+      .attr('width', 30)
+      .attr('height', h)
+      .attr('fill', 'var(--accent-1)')
+      .attr('opacity', 0.03)
+      .attr('rx', 4);
+  });
+
+  // Dots
+  const dots = g.selectAll('.dot')
+    .data(papers)
+    .enter()
+    .append('circle')
+    .attr('class', 'dot')
+    .attr('cx', d => x(d.year) + (Math.random() - 0.5) * 16)
+    .attr('cy', d => y(d._yIdx))
+    .attr('r', 5)
+    .attr('fill', d => getColor(d.themes[0]))
+    .attr('opacity', 0.8)
+    .attr('stroke', d => getColor(d.themes[0]))
+    .attr('stroke-width', 1)
+    .attr('stroke-opacity', 0.3)
+    .on('mouseover', function(event, d) {
+      d3.select(this).transition().duration(150).attr('r', 9).attr('opacity', 1);
+      showTooltip(`<div class="tooltip-title">J${d.paper_num}</div><div>${d.title.substring(0, 120)}</div><div class="tooltip-meta" style="margin-top:6px">${d.year} · ${d.journal}<br>Themes: ${d.themes.join(', ')}</div>`, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function() {
+      d3.select(this).transition().duration(150).attr('r', 5).attr('opacity', 0.8);
+      hideTooltip();
+    });
+
+  // Filter function
+  window.filterTimeline = function(theme) {
+    document.querySelectorAll('#timeline-controls .filter-btn').forEach(b => b.classList.remove('active'));
+    if (theme) {
+      document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
+    } else {
+      controls.querySelector('.filter-btn').classList.add('active');
+    }
+    dots.transition().duration(300)
+      .attr('opacity', d => {
+        if (!theme) return 0.8;
+        return d.themes.includes(theme) ? 0.9 : 0.08;
+      })
+      .attr('r', d => {
+        if (!theme) return 5;
+        return d.themes.includes(theme) ? 7 : 3;
+      });
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 5. SUNBURST
+// ═══════════════════════════════════════════════════════════════════
+function drawSunburst() {
+  const container = document.getElementById('sunburst-chart');
+  const size = Math.min(container.clientWidth, 700);
+  const radius = size / 2;
+
+  // Build hierarchy: root → era → theme → papers
+  const eras = [
+    { name: '2010–2014', range: [2010, 2014] },
+    { name: '2015–2017', range: [2015, 2017] },
+    { name: '2018–2020', range: [2018, 2020] },
+    { name: '2021–2023', range: [2021, 2023] },
+    { name: '2024–2026', range: [2024, 2026] }
+  ];
+
+  const root = { name: 'Research', children: [] };
+  eras.forEach(era => {
+    const eraPapers = PAPERS_DATA.filter(p => p.year && p.year >= era.range[0] && p.year <= era.range[1]);
+    const themeMap = {};
+    eraPapers.forEach(p => {
+      const primaryTheme = p.themes.find(t => t !== 'Other') || 'Other';
+      if (!themeMap[primaryTheme]) themeMap[primaryTheme] = [];
+      themeMap[primaryTheme].push(p);
+    });
+
+    const eraNode = { name: era.name, children: [] };
+    Object.entries(themeMap)
+      .sort((a, b) => b[1].length - a[1].length)
+      .forEach(([theme, papers]) => {
+        eraNode.children.push({
+          name: theme,
+          children: papers.map(p => ({ name: `J${p.paper_num}`, title: p.title, value: 1, theme }))
+        });
+      });
+    root.children.push(eraNode);
+  });
+
+  const hierarchy = d3.hierarchy(root).sum(d => d.value || 0);
+  const partition = d3.partition().size([2 * Math.PI, radius]);
+  partition(hierarchy);
+
+  const svg = d3.select('#sunburst-chart')
+    .append('svg')
+    .attr('width', size)
+    .attr('height', size)
+    .attr('viewBox', `0 0 ${size} ${size}`);
+
+  const g = svg.append('g').attr('transform', `translate(${size/2},${size/2})`);
+
+  const arc = d3.arc()
+    .startAngle(d => d.x0)
+    .endAngle(d => d.x1)
+    .innerRadius(d => d.y0 * 0.7)
+    .outerRadius(d => d.y1 * 0.7 - 1)
+    .padAngle(0.003);
+
+  const eraColors = {
+    '2010–2014': '#f59e0b',
+    '2015–2017': '#06b6d4',
+    '2018–2020': '#6366f1',
+    '2021–2023': '#8b5cf6',
+    '2024–2026': '#ef4444'
+  };
+
+  function getNodeColor(d) {
+    if (d.depth === 0) return 'var(--bg-card)';
+    if (d.depth === 1) return eraColors[d.data.name] || '#6366f1';
+    if (d.depth === 2) return getColor(d.data.name);
+    if (d.depth === 3) {
+      const c = d3.color(getColor(d.data.theme || 'Other'));
+      return c ? c.brighter(0.3).toString() : '#6366f1';
+    }
+    return '#6366f1';
+  }
+
+  const paths = g.selectAll('path')
+    .data(hierarchy.descendants().filter(d => d.depth > 0))
+    .enter()
+    .append('path')
+    .attr('d', arc)
+    .attr('fill', d => getNodeColor(d))
+    .attr('opacity', d => d.depth === 3 ? 0.7 : 0.85)
+    .attr('stroke', 'var(--bg-card)')
+    .attr('stroke-width', 0.5)
+    .style('cursor', 'pointer')
+    .on('mouseover', function(event, d) {
+      d3.select(this).transition().duration(150).attr('opacity', 1);
+      let html = '';
+      if (d.depth === 1) {
+        html = `<div class="tooltip-title">${d.data.name}</div><div class="tooltip-meta">${d.value} papers</div>`;
+      } else if (d.depth === 2) {
+        html = `<div class="tooltip-title">${d.data.name}</div><div class="tooltip-meta">${d.parent.data.name} · ${d.value} papers</div>`;
+      } else if (d.depth === 3) {
+        html = `<div class="tooltip-title">${d.data.name}</div><div>${(d.data.title || '').substring(0, 120)}</div><div class="tooltip-meta">${d.parent.data.name}</div>`;
+      }
+      showTooltip(html, event);
+    })
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mouseout', function(event, d) {
+      d3.select(this).transition().duration(150).attr('opacity', d.depth === 3 ? 0.7 : 0.85);
+      hideTooltip();
+    });
+
+  // Center text
+  g.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '-0.3em')
+    .attr('fill', 'var(--text-primary)')
+    .attr('font-size', '16px')
+    .attr('font-weight', 700)
+    .text('129');
+  g.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '1.2em')
+    .attr('fill', 'var(--text-muted)')
+    .attr('font-size', '11px')
+    .text('Publications');
+
+  // Depth labels on arcs (for era level)
+  g.selectAll('.era-label')
+    .data(hierarchy.descendants().filter(d => d.depth === 1))
+    .enter()
+    .append('text')
+    .attr('transform', d => {
+      const angle = (d.x0 + d.x1) / 2;
+      const r = (d.y0 * 0.7 + d.y1 * 0.7) / 2;
+      const deg = angle * 180 / Math.PI - 90;
+      const flip = angle > Math.PI;
+      return `rotate(${deg}) translate(${r},0) ${flip ? 'rotate(180)' : ''}`;
+    })
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.35em')
+    .attr('fill', 'white')
+    .attr('font-size', '10px')
+    .attr('font-weight', 600)
+    .style('pointer-events', 'none')
+    .text(d => d.data.name);
+}
+
+// ─── Initialize first chart ──────────────────────────────────────
+drawBubbleChart();
+vizInitialized['bubble'] = true;
+</script>
+</body>
+</html>
