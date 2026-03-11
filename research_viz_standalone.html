@@ -182,13 +182,16 @@ body {
   color: var(--text-primary);
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   z-index: 1000;
-  max-width: 350px;
+  max-width: 380px;
   backdrop-filter: blur(10px);
   opacity: 0;
   transition: opacity 0.2s ease;
   line-height: 1.5;
 }
 .tooltip.visible { opacity: 1; }
+.tooltip.interactive {
+  pointer-events: auto;
+}
 .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;
@@ -197,6 +200,32 @@ body {
 .tooltip-meta {
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+/* PDF links in tooltips */
+.tooltip a.pdf-link {
+  color: #93c5fd;
+  text-decoration: none;
+  transition: color 0.15s;
+  display: block;
+  padding: 2px 0;
+}
+.tooltip a.pdf-link:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+.tooltip a.pdf-link::before {
+  content: '📄 ';
+  font-size: 0.7em;
+}
+/* Click hint badge */
+.click-hint {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: rgba(99,102,241,0.2);
+  color: var(--accent-3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 6px;
 }
 
 /* SVG styling */
@@ -320,7 +349,7 @@ svg text {
   <div class="viz-panel active" id="panel-bubble">
     <div class="viz-header">
       <h2>Research Universe</h2>
-      <p>Each bubble represents a research theme. Size indicates the number of papers. Hover to explore.</p>
+      <p>Each bubble represents a research theme. Size indicates the number of papers. Hover to explore, click paper titles to view PDFs.</p>
     </div>
     <div class="viz-container">
       <div id="bubble-chart"></div>
@@ -355,7 +384,7 @@ svg text {
   <div class="viz-panel" id="panel-timeline">
     <div class="viz-header">
       <h2>Publication Timeline</h2>
-      <p>Each dot is a paper, colored by primary theme. Hover for details.</p>
+      <p>Each dot is a paper, colored by primary theme. <strong>Click any dot</strong> to view the PDF.</p>
     </div>
     <div class="viz-container">
       <div class="timeline-controls" id="timeline-controls"></div>
@@ -367,7 +396,7 @@ svg text {
   <div class="viz-panel" id="panel-sunburst">
     <div class="viz-header">
       <h2>Research Taxonomy</h2>
-      <p>Hierarchical view: Era → Theme → Individual papers. Click to zoom in, click center to zoom out.</p>
+      <p>Hierarchical view: Era → Theme → Individual papers. <strong>Click outer ring papers</strong> to view PDFs.</p>
     </div>
     <div class="viz-container">
       <div id="sunburst-chart"></div>
@@ -1990,6 +2019,17 @@ const ALL_THEMES = ["Biomedical / Clinical Applications", "Computer Vision", "Da
 
 </script>
 <script>
+// ─── PDF base URL (change this to match your GitHub Pages deployment) ──
+const PDF_BASE_URL = 'papers/';
+
+function getPdfUrl(paper) {
+  return PDF_BASE_URL + paper.filename;
+}
+
+function openPdf(paper) {
+  window.open(getPdfUrl(paper), '_blank');
+}
+
 // ─── Color palette ──────────────────────────────────────────────────
 const THEME_COLORS = {
   'Biomedical / Clinical Applications': '#6366f1',
@@ -2020,9 +2060,11 @@ function getColor(theme) {
 
 // ─── Tooltip ──────────────────────────────────────────────────
 const tooltip = d3.select('#tooltip');
+let tooltipHideTimer = null;
 
-function showTooltip(html, event) {
-  tooltip.html(html).classed('visible', true);
+function showTooltip(html, event, interactive) {
+  if (tooltipHideTimer) { clearTimeout(tooltipHideTimer); tooltipHideTimer = null; }
+  tooltip.html(html).classed('visible', true).classed('interactive', !!interactive);
   const ttNode = tooltip.node();
   const ttW = ttNode.offsetWidth;
   const ttH = ttNode.offsetHeight;
@@ -2034,9 +2076,22 @@ function showTooltip(html, event) {
   tooltip.style('left', x + 'px').style('top', y + 'px');
 }
 
-function hideTooltip() {
-  tooltip.classed('visible', false);
+function hideTooltip(delay) {
+  if (delay) {
+    tooltipHideTimer = setTimeout(() => {
+      tooltip.classed('visible', false).classed('interactive', false);
+    }, delay);
+  } else {
+    tooltip.classed('visible', false).classed('interactive', false);
+  }
 }
+
+// Keep tooltip visible when hovering over it (for clickable links)
+tooltip.on('mouseenter', function() {
+  if (tooltipHideTimer) { clearTimeout(tooltipHideTimer); tooltipHideTimer = null; }
+}).on('mouseleave', function() {
+  hideTooltip();
+});
 
 // ─── Tab switching ──────────────────────────────────────────────
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -2130,14 +2185,16 @@ function drawBubbleChart() {
     .on('mouseover', function(event, d) {
       d3.select(this).transition().duration(200).attr('opacity', 1).attr('stroke-width', 3);
       const papers = PAPERS_DATA.filter(p => p.themes.includes(d.name));
-      const paperList = papers.slice(0, 5).map(p => `• ${p.title.substring(0, 60)}...`).join('<br>');
-      const more = papers.length > 5 ? `<br><span style="color:var(--text-muted)">...and ${papers.length - 5} more</span>` : '';
-      showTooltip(`<div class="tooltip-title">${d.name}</div><div class="tooltip-meta">${d.count} papers</div><hr style="border-color:var(--border);margin:6px 0"><div style="font-size:0.78rem">${paperList}${more}</div>`, event);
+      const paperList = papers.slice(0, 5).map(p =>
+        `<a class="pdf-link" href="${getPdfUrl(p)}" target="_blank" title="View PDF">${p.title.substring(0, 55)}...</a>`
+      ).join('');
+      const more = papers.length > 5 ? `<span style="color:var(--text-muted);font-size:0.75rem">...and ${papers.length - 5} more</span>` : '';
+      showTooltip(`<div class="tooltip-title">${d.name}</div><div class="tooltip-meta">${d.count} papers</div><hr style="border-color:var(--border);margin:6px 0"><div style="font-size:0.78rem">${paperList}${more}</div>`, event, true);
     })
-    .on('mousemove', (event) => showTooltip(tooltip.html(), event))
+    .on('mousemove', (event) => showTooltip(tooltip.html(), event, true))
     .on('mouseout', function() {
       d3.select(this).transition().duration(200).attr('opacity', 0.7).attr('stroke-width', 1.5);
-      hideTooltip();
+      hideTooltip(300);
     });
 
   // Labels
@@ -2480,14 +2537,18 @@ function drawTimeline() {
     .attr('stroke', d => getColor(d.themes[0]))
     .attr('stroke-width', 1)
     .attr('stroke-opacity', 0.3)
+    .style('cursor', 'pointer')
     .on('mouseover', function(event, d) {
       d3.select(this).transition().duration(150).attr('r', 9).attr('opacity', 1);
-      showTooltip(`<div class="tooltip-title">J${d.paper_num}</div><div>${d.title.substring(0, 120)}</div><div class="tooltip-meta" style="margin-top:6px">${d.year} · ${d.journal}<br>Themes: ${d.themes.join(', ')}</div>`, event);
+      showTooltip(`<div class="tooltip-title">${d.themes[0]}</div><div><strong>${d.title.substring(0, 100)}</strong></div><div class="tooltip-meta" style="margin-top:6px">Year: ${d.year}<br>Journal: ${d.journal}</div><div class="click-hint">📄 Click to view PDF</div>`, event);
     })
     .on('mousemove', (event) => showTooltip(tooltip.html(), event))
     .on('mouseout', function() {
       d3.select(this).transition().duration(150).attr('r', 5).attr('opacity', 0.8);
       hideTooltip();
+    })
+    .on('click', function(event, d) {
+      openPdf(d);
     });
 
   // Filter function
@@ -2605,7 +2666,8 @@ function drawSunburst() {
       } else if (d.depth === 2) {
         html = `<div class="tooltip-title">${d.data.name}</div><div class="tooltip-meta">${d.parent.data.name} · ${d.value} papers</div>`;
       } else if (d.depth === 3) {
-        html = `<div class="tooltip-title">${d.data.name}</div><div>${(d.data.title || '').substring(0, 120)}</div><div class="tooltip-meta">${d.parent.data.name}</div>`;
+        const paper = PAPERS_DATA.find(p => p.paper_num === parseInt(d.data.name.replace('J','')));
+        html = `<div class="tooltip-title">${d.data.name}</div><div>${(d.data.title || '').substring(0, 120)}</div><div class="tooltip-meta">${d.parent.data.name}</div>${paper ? '<div class="click-hint">📄 Click to view PDF</div>' : ''}`;
       }
       showTooltip(html, event);
     })
@@ -2613,6 +2675,12 @@ function drawSunburst() {
     .on('mouseout', function(event, d) {
       d3.select(this).transition().duration(150).attr('opacity', d.depth === 3 ? 0.7 : 0.85);
       hideTooltip();
+    })
+    .on('click', function(event, d) {
+      if (d.depth === 3) {
+        const paper = PAPERS_DATA.find(p => p.paper_num === parseInt(d.data.name.replace('J','')));
+        if (paper) openPdf(paper);
+      }
     });
 
   // Center text
